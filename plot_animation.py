@@ -79,7 +79,7 @@ ax.set_ylim3d([-0.2,0.2])
 # ax.view_init(elev=135,azim=0)
 
 # Instantiate spot micro stick figure obeject
-sm = SpotMicroStickFigure(x=0,y=0,z=0, theta=00*d2r)
+sm = SpotMicroStickFigure(x=0,y=0.14,z=0, theta=00*d2r)
 
 # Define absolute position for the legs
 l = sm.body_length

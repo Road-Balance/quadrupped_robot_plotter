@@ -12,7 +12,19 @@ cd quadrupped_robot_plotter
 python3 -m venv .venv
 
 <activate venv>
-.venv\Scripts\activate\
+
+# Linux
+./.venv/bin/activate
+# Windows
+.\.venv\Scripts\Activate.ps1
+
+# install requirements
 (.venv) > pip install -r requirements.txt
 
+```
+
+## Run
+
+```
+python plot_animation.py
 ```
