@@ -11,12 +11,16 @@ r2d = 180/pi
 class ThreeJointLeg(object):
     def __init__(
         self,
+        name,
         start_pose,
-        start_position={"x": 0, "y": 0, "z": 0},
         link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-        joint_angles={"q1": 0, "q2": 30, "q3": 30},
+        joint_angles={"q1": 0, "q2": 30, "q3": -50},
     ):
         super().__init__()
+
+        self.name = name
+        self.start_pose = start_pose
+        start_position = start_pose[0:3, 3]
 
         self.setHipPosition(start_position)
         self.setLegLength(link_length)
@@ -24,15 +28,15 @@ class ThreeJointLeg(object):
 
     def setHipPosition(self, position):
 
-        self.x = position["x"]
-        self.y = position["y"]
-        self.z = position["z"]
+        self.x = position[0]
+        self.y = position[1]
+        self.z = position[2]
 
     def setLegJoints(self, angles):
 
-        self.q1 = angles["q1"]
-        self.q2 = angles["q2"]
-        self.q3 = angles["q3"]
+        self.rad_q1 = angles["q1"] * d2r
+        self.rad_q2 = angles["q2"] * d2r
+        self.rad_q3 = angles["q3"] * d2r
 
     def setLegLength(self, lengths):
 
@@ -40,15 +44,94 @@ class ThreeJointLeg(object):
         self.l2 = lengths["l2"]
         self.l3 = lengths["l3"]
 
+        print(self.l1, self.l2, self.l3)
+
     def getLegPosition(self):
+        # IK시 필요함
         pass
 
     def setLegPosition(self):
+        # IK시 필요함
         pass
+
+
+    def getT0_1(self):
+
+        if 'F' in self.name:
+            print("Yes")
+            sign_offset = -1
+
+        _cos = cos(self.rad_q1)
+        _sin = sin(self.rad_q1)
+
+        T0_1 = np.array(
+            [
+                [1, 0, 0, 0],
+                [0, _cos, -_sin, sign_offset * -self.l1 * _cos],
+                [0, _sin,  _cos, sign_offset * -self.l1 * _sin],
+                [0, 0, 0, 1],
+            ]
+        )
+
+        return T0_1
+
+    def getT1_2(self):
+
+        _cos = cos(self.rad_q2)
+        _sin = sin(self.rad_q2)
+
+        T1_2 = np.array(
+            [
+                [_cos, 0, _sin, -self.l2 * _sin],
+                [0, 1, 0, 0],
+                [-_sin, 0, _cos, -self.l2 * _cos],
+                [0, 0, 0, 1],
+            ]
+        )
+
+        return T1_2
+
+    def getT2_3(self):
+
+        _cos = cos(self.rad_q3)
+        _sin = sin(self.rad_q3)
+
+        T2_3 = np.array(
+            [
+                [_cos, 0, _sin, -self.l3 * _sin],
+                [0, 1, 0, 0],
+                [-_sin, 0, _cos, -self.l3 * _cos],
+                [0, 0, 0, 1],
+            ]
+        )
+
+        return T2_3
 
     def getLegPoints(self):
-        pass
 
+        # self.legPointPose = self.getT2_() @ self.getT1_2() @ self.getT0_1() @ self.start_pose
+        x_0 = self.start_pose[0:3, 3]
+        
+        x_1_pose = self.getT0_1() @ self.start_pose
+        x_1 = x_1_pose[0:3, 3]
+
+        x_2_pose = self.getT1_2() @ x_1_pose
+        x_2 = x_2_pose[0:3, 3]
+
+        x_3_pose = self.getT2_3() @ x_2_pose
+        x_3 = x_3_pose[0:3, 3]
+
+        # 실제로는 Z자 모양 순서인데, 그림을 위해서 조작한다.
+        return [
+            x_0,
+            x_1,
+            x_2,
+            x_3,
+        ]
+
+    def getLegAngles(self):
+        # IK시 필요함
+        pass 
 
 class QuadrupedRobot(object):
     def __init__(
@@ -123,7 +206,6 @@ class QuadrupedRobot(object):
             ]
         )
 
-        # self.originPoseMat = self.Roll @ self.Pitch @ self.Yaw @ self.originPoseMat
         self.originPoseMat = self.Yaw @ self.Pitch @ self.Roll @ self.originPoseMat
 
     def resetCOMOrientation(self):
@@ -234,6 +316,18 @@ def getBodyLine(bodyPoints, ax):
 
     return lines
 
+def getFRLegLine(fr_leg_points, ax):
+    # Plot color order for leg links: (hip, upper leg, lower leg)
+    plt_colors = ['r','c','b']
+    for i in range(len(fr_leg_points) - 1):
+        # Due to mplot3d rotation and view limitations, swap y and z to make the stick figure
+        # appear oriented better
+        x_vals = [fr_leg_points[i][0], fr_leg_points[i+1][0]]
+        y_vals = [fr_leg_points[i][1], fr_leg_points[i+1][1]]
+        z_vals = [fr_leg_points[i][2], fr_leg_points[i+1][2]]
+        lines.append(ax.plot(x_vals, y_vals, z_vals,color=plt_colors[i])[0])
+
+
 def update_lines(num, coord_data, lines):
 
     for line, i in zip(lines, range(len(lines))):
@@ -264,8 +358,14 @@ def update_lines(num, coord_data, lines):
 
 if __name__ == "__main__":
     my_robot = QuadrupedRobot()
+
     hip_positions = my_robot.getHipPosition()
     print(hip_positions)
+
+    FRPose = my_robot.getFRPose()
+    my_fr_Leg = ThreeJointLeg(name="FR", start_pose=FRPose)
+    fr_leg_points = my_fr_Leg.getLegPoints()
+    print(fr_leg_points)
 
     # Attaching 3D axis to the figure
     fig = plt.figure()
@@ -281,31 +381,32 @@ if __name__ == "__main__":
     ax.set_zlim3d([-0.3, 0.2])
 
     lines = getBodyLine(hip_positions, ax)
+    lines = getFRLegLine(fr_leg_points, ax)
     # coord_data = getPsiCoordData(25, -30, 30, )
 
-    num_angles = 25
-    pitch_angles = np.linspace(-30*d2r,30*d2r,num_angles)
-    coord_data = []
-    for theta in pitch_angles:
-        # Set a pitch angle
-        my_robot.setCOMOrientation(theta=theta)
+    # num_angles = 25
+    # pitch_angles = np.linspace(-30*d2r,30*d2r,num_angles)
+    # coord_data = []
+    # for theta in pitch_angles:
+    #     # Set a pitch angle
+    #     my_robot.setCOMOrientation(theta=theta)
 
-        # Get leg coordinates and append to data list
-        coord_data.append(my_robot.getHipPosition())
+    #     # Get leg coordinates and append to data list
+    #     coord_data.append(my_robot.getHipPosition())
 
-        my_robot.resetCOMOrientation()
+    #     my_robot.resetCOMOrientation()
 
 
-    coord_data = coord_data + coord_data[::-1]
+    # coord_data = coord_data + coord_data[::-1]
 
-    line_ani = animation.FuncAnimation(
-        fig,
-        update_lines,
-        num_angles * 2,
-        fargs=(coord_data, lines),
-        interval=75,
-        blit=False,
-    )
+    # line_ani = animation.FuncAnimation(
+    #     fig,
+    #     update_lines,
+    #     num_angles * 2,
+    #     fargs=(coord_data, lines),
+    #     interval=75,
+    #     blit=False,
+    # )
 
     plt.show()
 
