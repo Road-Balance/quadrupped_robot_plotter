@@ -67,19 +67,21 @@ def update_lines(num, coord_data, lines):
 fig = plt.figure()
 ax = p3.Axes3D(fig)
 
+# X and Y swap
 ax.set_xlabel('X')
-ax.set_ylabel('Z')
-ax.set_zlabel('Y')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
 
-ax.set_xlim3d([-0.2, 0.2])
-ax.set_zlim3d([0, 0.4])
-ax.set_ylim3d([-0.2,0.2])
+# 
+ax.set_xlim3d([-0.4, 0.2])
+ax.set_ylim3d([-0.2, 0.2])
+ax.set_zlim3d([-0.3, 0.2])
 
 # Set azimtuth and elevation of plot
 # ax.view_init(elev=135,azim=0)
 
 # Instantiate spot micro stick figure obeject
-sm = SpotMicroStickFigure(x=0,y=0.14,z=0, theta=00*d2r)
+sm = SpotMicroStickFigure(x=0,y=0,z=0, theta=00*d2r)
 
 # Define absolute position for the legs
 l = sm.body_length
@@ -87,10 +89,18 @@ w = sm.body_width
 l1 = sm.hip_length
 l2 = sm.upper_leg_length
 l3 = sm.lower_leg_length
-desired_p4_points = np.array([ [-l/2,   0,  w/2 + l1],
-                               [ l/2 ,  0,  w/2 + l1],
-                               [ l/2 ,  0, -w/2 - l1],
-                               [-l/2 ,  0, -w/2 - l1] ])
+
+robot_height = 0.3
+
+# 0 : leg_rightback => RR
+# 1 : leg_rightfront => FR
+# 2 : leg_leftfront => FL 
+# 3 : leg_leftback => RL
+
+desired_p4_points = np.array([ [-l/2,   -robot_height,  w/2 + l1],
+                               [ l/2 ,  -robot_height,  w/2 + l1],
+                               [ l/2 ,  -robot_height, -w/2 - l1],
+                               [-l/2 ,  -robot_height, -w/2 - l1] ])
 
 sm.set_absolute_foot_coordinates(desired_p4_points)
 

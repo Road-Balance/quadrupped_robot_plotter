@@ -176,19 +176,25 @@ class SpotMicroStickFigure(object):
         leftfront_leg_angles: length 3 list of joint angles. Order: hip, leg, knee
         leftback_leg_angles: length 3 list of joint angles. Order: hip, leg, knee
 
-        leg_rightback
-        leg_rightfront
-        leg_leftfront
-        leg_leftback
+        RR
+        FR
+        FL
+        RL
         
     """
     def __init__(self,x=0,y=.18,z=0,phi=0,theta=0,psi=0):
         '''constructor'''
-        self.hip_length = 0.055
-        self.upper_leg_length = 0.1075
-        self.lower_leg_length = 0.130
-        self.body_width = 0.078
-        self.body_length = 0.186
+        # self.hip_length = 0.055
+        # self.upper_leg_length = 0.1075
+        # self.lower_leg_length = 0.130
+        # self.body_width = 0.078
+        # self.body_length = 0.186
+
+        self.hip_length = 0.0838
+        self.upper_leg_length = 0.2
+        self.lower_leg_length = 0.2
+        self.body_width = 0.047 * 2
+        self.body_length = 0.1805 * 2
 
         self.x = x
         self.y = y
@@ -215,29 +221,29 @@ class SpotMicroStickFigure(object):
         # First initialize to empty dict
         self.legs = {}
 
-        self.legs['leg_rightback'] =     SpotMicroLeg(self.rb_leg_angles[0],self.rb_leg_angles[1],self.rb_leg_angles[2],
+        self.legs['RR'] =     SpotMicroLeg(self.rb_leg_angles[0],self.rb_leg_angles[1],self.rb_leg_angles[2],
                                                      self.hip_length,self.upper_leg_length,self.lower_leg_length,
                                                      smk.t_rightback(self.ht_body,self.body_length,self.body_width),leg12=True) 
         
-        self.legs['leg_rightfront'] =   SpotMicroLeg(self.rf_leg_angles[0],self.rf_leg_angles[1],self.rf_leg_angles[2],
+        self.legs['FR'] =   SpotMicroLeg(self.rf_leg_angles[0],self.rf_leg_angles[1],self.rf_leg_angles[2],
                                                      self.hip_length,self.upper_leg_length,self.lower_leg_length,
                                                      smk.t_rightfront(self.ht_body,self.body_length,self.body_width),leg12=True)
                                                   
-        self.legs['leg_leftfront'] =    SpotMicroLeg(self.lf_leg_angles[0],self.lf_leg_angles[1],self.lf_leg_angles[2],
+        self.legs['FL'] =    SpotMicroLeg(self.lf_leg_angles[0],self.lf_leg_angles[1],self.lf_leg_angles[2],
                                                      self.hip_length,self.upper_leg_length,self.lower_leg_length,
                                                      smk.t_leftfront(self.ht_body,self.body_length,self.body_width),leg12=False)
 
-        self.legs['leg_leftback'] =     SpotMicroLeg(self.lb_leg_angles[0],self.lb_leg_angles[1],self.lb_leg_angles[2],
+        self.legs['RL'] =     SpotMicroLeg(self.lb_leg_angles[0],self.lb_leg_angles[1],self.lb_leg_angles[2],
                                                      self.hip_length,self.upper_leg_length,self.lower_leg_length,
                                                      smk.t_leftback(self.ht_body,self.body_length,self.body_width),leg12=False) 
 
     def get_leg_coordinates(self):
         '''Return coordinates of each leg as a tuple of 4 sets of 4 leg points'''
         
-        return (self.legs['leg_rightback'].get_leg_points(),
-                self.legs['leg_rightfront'].get_leg_points(),
-                self.legs['leg_leftfront'].get_leg_points(),
-                self.legs['leg_leftback'].get_leg_points())
+        return (self.legs['RR'].get_leg_points(),
+                self.legs['FR'].get_leg_points(),
+                self.legs['FL'].get_leg_points(),
+                self.legs['RL'].get_leg_points())
 
     def set_leg_angles(self,leg_angs):
         ''' Set the leg angles for all four legs
@@ -254,10 +260,10 @@ class SpotMicroStickFigure(object):
         Returns:
             Nothing
         '''
-        self.legs['leg_rightback'].set_angles(leg_angs[0][0],leg_angs[0][1],leg_angs[0][2])
-        self.legs['leg_rightfront'].set_angles(leg_angs[1][0],leg_angs[1][1],leg_angs[1][2])
-        self.legs['leg_leftfront'].set_angles(leg_angs[2][0],leg_angs[2][1],leg_angs[2][2])
-        self.legs['leg_leftback'].set_angles(leg_angs[3][0],leg_angs[3][1],leg_angs[3][2])            
+        self.legs['RR'].set_angles(leg_angs[0][0],leg_angs[0][1],leg_angs[0][2])
+        self.legs['FR'].set_angles(leg_angs[1][0],leg_angs[1][1],leg_angs[1][2])
+        self.legs['FL'].set_angles(leg_angs[2][0],leg_angs[2][1],leg_angs[2][2])
+        self.legs['RL'].set_angles(leg_angs[3][0],leg_angs[3][1],leg_angs[3][2])            
 
 
     def set_absolute_foot_coordinates(self,foot_coords):
@@ -278,10 +284,10 @@ class SpotMicroStickFigure(object):
 
         # For each leg, call its method to set foot position in global coordinate frame
         
-        foot_coords_dict = {'leg_rightback':foot_coords[0],
-                            'leg_rightfront':foot_coords[1],
-                            'leg_leftfront':foot_coords[2],
-                            'leg_leftback':foot_coords[3]}
+        foot_coords_dict = {'RR':foot_coords[0],
+                            'FR':foot_coords[1],
+                            'FL':foot_coords[2],
+                            'RL':foot_coords[3]}
         
         for leg_name in self.legs:
             x4 = foot_coords_dict[leg_name][0]
@@ -302,16 +308,16 @@ class SpotMicroStickFigure(object):
         self.ht_body = ht_body
 
         # Update each leg's homogeneous transformation 
-        self.legs['leg_rightback'].set_homog_transf(smk.t_rightback(self.ht_body,self.body_length,self.body_width))
-        self.legs['leg_rightfront'].set_homog_transf(smk.t_rightfront(self.ht_body,self.body_length,self.body_width))
-        self.legs['leg_leftfront'].set_homog_transf(smk.t_leftfront(self.ht_body,self.body_length,self.body_width))
-        self.legs['leg_leftback'].set_homog_transf(smk.t_leftback(self.ht_body,self.body_length,self.body_width))
+        self.legs['RR'].set_homog_transf(smk.t_rightback(self.ht_body,self.body_length,self.body_width))
+        self.legs['FR'].set_homog_transf(smk.t_rightfront(self.ht_body,self.body_length,self.body_width))
+        self.legs['FL'].set_homog_transf(smk.t_leftfront(self.ht_body,self.body_length,self.body_width))
+        self.legs['RL'].set_homog_transf(smk.t_leftback(self.ht_body,self.body_length,self.body_width))
 
         # Prep foot coordinates to call method to set absolute foot coordinates
-        foot_coords_matrix = np.block([ [foot_coords['leg_rightback']],
-                                        [foot_coords['leg_rightfront']],
-                                        [foot_coords['leg_leftfront']],
-                                        [foot_coords['leg_leftback']]  ])
+        foot_coords_matrix = np.block([ [foot_coords['RR']],
+                                        [foot_coords['FR']],
+                                        [foot_coords['FL']],
+                                        [foot_coords['RL']]  ])
 
         self.set_absolute_foot_coordinates(foot_coords_matrix)
 
@@ -349,10 +355,10 @@ class SpotMicroStickFigure(object):
                          (lf_q1,lf_q2,lf_q3),
                          (lb_q1,lb_q2,lb_q3))
         '''
-        return (    self.legs['leg_rightback'].get_leg_angles(),
-                    self.legs['leg_rightfront'].get_leg_angles(),
-                    self.legs['leg_leftfront'].get_leg_angles(),
-                    self.legs['leg_leftback'].get_leg_angles()     )
+        return (    self.legs['RR'].get_leg_angles(),
+                    self.legs['FR'].get_leg_angles(),
+                    self.legs['FL'].get_leg_angles(),
+                    self.legs['RL'].get_leg_angles()     )
 
 
     def print_leg_angles(self):
