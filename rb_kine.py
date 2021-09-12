@@ -14,7 +14,7 @@ class ThreeJointLeg(object):
         name,
         start_pose,
         link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-        joint_angles={"q1": 0, "q2": 30, "q3": -50},
+        joint_angles={"q1": 0, "q2": 40, "q3": -60},
     ):
         super().__init__()
 
@@ -112,14 +112,18 @@ class ThreeJointLeg(object):
         # self.legPointPose = self.getT2_() @ self.getT1_2() @ self.getT0_1() @ self.start_pose
         x_0 = self.start_pose[0:3, 3]
         
-        x_1_pose = self.getT0_1() @ self.start_pose
+        # x_1_pose = self.getT0_1() @ self.start_pose
+        # x_2_pose = self.getT1_2() @ x_1_pose
+        # x_3_pose = self.getT2_3() @ x_2_pose
+
+        x_1_pose = self.start_pose @ self.getT0_1()
+        x_2_pose = x_1_pose @ self.getT1_2()
+        x_3_pose = x_2_pose @ self.getT2_3()
+
         x_1 = x_1_pose[0:3, 3]
-
-        x_2_pose = self.getT1_2() @ x_1_pose
         x_2 = x_2_pose[0:3, 3]
-
-        x_3_pose = self.getT2_3() @ x_2_pose
         x_3 = x_3_pose[0:3, 3]
+
 
         # 실제로는 Z자 모양 순서인데, 그림을 위해서 조작한다.
         return [
