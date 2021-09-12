@@ -149,7 +149,7 @@ for theta in pitch_angles:
     # Set a pitch angle
     sm.set_body_angles(theta=theta)
 
-    x = sm.get_leg_angles()
+    # x = sm.get_leg_angles()
     
     # Get leg coordinates and append to data list
     coord_data.append(sm.get_leg_coordinates())
