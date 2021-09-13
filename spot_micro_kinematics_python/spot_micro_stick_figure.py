@@ -69,7 +69,7 @@ class SpotMicroLeg(object):
             y4: Desired foot y position in leg's coordinate frame
             z4: Desired foot z position in leg's coordinate frame
         Returns:
-            Nothing
+            Nothingset_foot_position_in_local_coords
         '''
         # Run inverse kinematics and get joint angles
         leg_angs = smk.ikine(x4,y4,z4,self._l1,self._l2,self._l3,self._leg12)

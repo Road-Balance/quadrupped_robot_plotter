@@ -28,7 +28,6 @@ def update_lines(num, coord_data, lines):
                                     15:(3,2)}
 
     for line, i in zip(lines, range(len(lines))):
-        print(i)
 
         if i < 4:
             # First four lines are the square body
