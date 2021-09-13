@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 
+from copy import deepcopy
 from math import pi, sin, cos, sqrt
 
 d2r = pi/180
@@ -19,18 +20,15 @@ class ThreeJointLeg(object):
         super().__init__()
 
         self.name = name
-        self.start_pose = start_pose
-        start_position = start_pose[0:3, 3]
 
-        self.setHipPosition(start_position)
-        self.setLegLength(link_length)
         self.setLegJoints(joint_angles)
+        self.setLegLength(link_length)
+        self.setStartPose(start_pose)
 
-    def setHipPosition(self, position):
+    def setStartPose(self, start_pose):
 
-        self.x = position[0]
-        self.y = position[1]
-        self.z = position[2]
+        self.start_pose = start_pose
+        self.calcLegPose()
 
     def setLegJoints(self, angles):
 
@@ -44,8 +42,6 @@ class ThreeJointLeg(object):
         self.l2 = lengths["l2"]
         self.l3 = lengths["l3"]
 
-        print(self.l1, self.l2, self.l3)
-
     def getLegPosition(self):
         # IK시 필요함
         pass
@@ -57,8 +53,9 @@ class ThreeJointLeg(object):
 
     def getT0_1(self):
 
-        if 'F' in self.name:
-            print("Yes")
+        sign_offset = 1
+
+        if self.name == "FL" or self.name == "RL":
             sign_offset = -1
 
         _cos = cos(self.rad_q1)
@@ -107,25 +104,19 @@ class ThreeJointLeg(object):
 
         return T2_3
 
+    def calcLegPose(self):
+
+        self.x_1_pose = self.start_pose @ self.getT0_1()
+        self.x_2_pose = self.x_1_pose @ self.getT1_2()
+        self.x_3_pose = self.x_2_pose @ self.getT2_3()
+
     def getLegPoints(self):
 
-        # self.legPointPose = self.getT2_() @ self.getT1_2() @ self.getT0_1() @ self.start_pose
         x_0 = self.start_pose[0:3, 3]
-        
-        # x_1_pose = self.getT0_1() @ self.start_pose
-        # x_2_pose = self.getT1_2() @ x_1_pose
-        # x_3_pose = self.getT2_3() @ x_2_pose
+        x_1 = self.x_1_pose[0:3, 3]
+        x_2 = self.x_2_pose[0:3, 3]
+        x_3 = self.x_3_pose[0:3, 3]
 
-        x_1_pose = self.start_pose @ self.getT0_1()
-        x_2_pose = x_1_pose @ self.getT1_2()
-        x_3_pose = x_2_pose @ self.getT2_3()
-
-        x_1 = x_1_pose[0:3, 3]
-        x_2 = x_2_pose[0:3, 3]
-        x_3 = x_3_pose[0:3, 3]
-
-
-        # 실제로는 Z자 모양 순서인데, 그림을 위해서 조작한다.
         return [
             x_0,
             x_1,
@@ -147,6 +138,8 @@ class QuadrupedRobot(object):
     ):
         super().__init__()
 
+        self.is_first = True
+
         self.originPoseMat = np.eye(4)
 
         self.setCOMPosition(position)
@@ -161,11 +154,43 @@ class QuadrupedRobot(object):
             orientation["phi"], orientation["theta"], orientation["psi"]
         )
 
+        self.FR = ThreeJointLeg(
+                    name="FR", 
+                    start_pose=self.FRPose,
+                    link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
+                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                )
+
+        self.FL = ThreeJointLeg(
+                    name="FL", 
+                    start_pose=self.FLPose,
+                    link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
+                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                )
+
+        self.RL = ThreeJointLeg(
+                    name="RL", 
+                    start_pose=self.RLPose,
+                    link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
+                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                )
+
+        self.RR = ThreeJointLeg(
+                    name="RR", 
+                    start_pose=self.RRPose,
+                    link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
+                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                )
+
+        self.leg_points = {"FR" : [], "FL" : [], "RR" : [], "RL" : []}
+
     def setCOMPosition(self, position):
 
         self.x = position["x"]
         self.y = position["y"]
         self.z = position["z"]
+
+        # TODO: update origin poseMat
 
     def setRobotParams(
         self, hip_len=0.0838, upper_len=0.2, lower_len=0.2, width=0.094, height=0.361
@@ -176,6 +201,8 @@ class QuadrupedRobot(object):
         self.lower_leg_length = lower_len
         self.body_width = width
         self.body_length = height
+
+        # TODO: Update Hip Points
 
     def setCOMOrientation(self, phi=0, theta=0, psi=0):
 
@@ -211,17 +238,33 @@ class QuadrupedRobot(object):
         )
 
         self.originPoseMat = self.Yaw @ self.Pitch @ self.Roll @ self.originPoseMat
+        self.updateWholePoints()
 
     def resetCOMOrientation(self):
 
         self.originPoseMat = np.eye(4)
+        self.updateWholePoints()
 
+    def updateWholePoints(self):
+
+        if self.is_first == True:
+            self.calcHipPose()
+            self.is_first = False
+        else:
+            # 나중에는 IK로 바뀌어야 한다.
+            self.calcHipPose()
+            self.FR.setStartPose(self.FRPose)
+            self.FL.setStartPose(self.FLPose)
+            self.RR.setStartPose(self.RRPose)
+            self.RL.setStartPose(self.RLPose)
+            pass
+        
     def getFRPose(self):
 
         T_FR = np.array(
             [
                 [1, 0, 0, +self.body_length / 2],
-                [0, 1, 0, +self.body_width / 2],
+                [0, 1, 0, -self.body_width / 2],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1],
             ]
@@ -231,20 +274,33 @@ class QuadrupedRobot(object):
 
     def getFLPose(self):
 
-        T_FR = np.array(
+        T_FL = np.array(
             [
                 [1, 0, 0, +self.body_length / 2],
+                [0, 1, 0, +self.body_width / 2],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ]
+        )
+
+        return T_FL
+
+    def getRRPose(self):
+
+        T_RR = np.array(
+            [
+                [1, 0, 0, -self.body_length / 2],
                 [0, 1, 0, -self.body_width / 2],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1],
             ]
         )
 
-        return T_FR
+        return T_RR
 
-    def getRRPose(self):
+    def getRLPose(self):
 
-        T_FR = np.array(
+        T_RL = np.array(
             [
                 [1, 0, 0, -self.body_length / 2],
                 [0, 1, 0, +self.body_width / 2],
@@ -253,27 +309,16 @@ class QuadrupedRobot(object):
             ]
         )
 
-        return T_FR
+        return T_RL
 
-    def getRLPose(self):
-
-        T_FR = np.array(
-            [
-                [1, 0, 0, -self.body_length / 2],
-                [0, 1, 0, -self.body_width / 2],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1],
-            ]
-        )
-
-        return T_FR
-
-    def getHipPose(self):
+    def calcHipPose(self):
 
         self.FRPose = self.originPoseMat @ self.getFRPose()
         self.FLPose = self.originPoseMat @ self.getFLPose()
         self.RRPose = self.originPoseMat @ self.getRRPose()
         self.RLPose = self.originPoseMat @ self.getRLPose()
+
+    def getHipPose(self):
 
         self.legPose = {
             "FRPose": self.FRPose,
@@ -282,9 +327,9 @@ class QuadrupedRobot(object):
             "RLPose": self.RLPose,
         }
 
-    def getHipPosition(self):
+        return self.legPose
 
-        self.getHipPose()
+    def getBodyPoints(self):
 
         FRPosition = self.FRPose[0:3, 3]
         FLPosition = self.FLPose[0:3, 3]
@@ -298,10 +343,21 @@ class QuadrupedRobot(object):
             RLPosition,
             RRPosition,
         ]
+    
+    def getLegPoints(self):
+
+        self.legPoints = (
+            self.FR.getLegPoints(),
+            self.FL.getLegPoints(),
+            self.RL.getLegPoints(),
+            self.RR.getLegPoints(),
+        )
+    
+        return self.legPoints
 
 
 def getBodyLine(bodyPoints, ax):
-    lines = []
+    body_lines = []
 
     # Construct the body of 4 lines from the first point of each leg (the four corners of the body)
     for i in range(4):
@@ -316,29 +372,46 @@ def getBodyLine(bodyPoints, ax):
         x_vals = [bodyPoints[ind][0], bodyPoints[ind + 1][0]]
         y_vals = [bodyPoints[ind][1], bodyPoints[ind + 1][1]]
         z_vals = [bodyPoints[ind][2], bodyPoints[ind + 1][2]]
-        lines.append(ax.plot(x_vals, y_vals, z_vals, color="k")[0])
+        body_lines.append(ax.plot(x_vals, y_vals, z_vals, color="k")[0])
 
-    return lines
+    return body_lines
 
-def getFRLegLine(fr_leg_points, ax):
+def getLegLines(leg_points, ax):
+    leg_lines = []
+
     # Plot color order for leg links: (hip, upper leg, lower leg)
     plt_colors = ['r','c','b']
-    for i in range(len(fr_leg_points) - 1):
-        # Due to mplot3d rotation and view limitations, swap y and z to make the stick figure
-        # appear oriented better
-        x_vals = [fr_leg_points[i][0], fr_leg_points[i+1][0]]
-        y_vals = [fr_leg_points[i][1], fr_leg_points[i+1][1]]
-        z_vals = [fr_leg_points[i][2], fr_leg_points[i+1][2]]
-        lines.append(ax.plot(x_vals, y_vals, z_vals,color=plt_colors[i])[0])
+    for leg in leg_points:
+        for i in range(len(leg) - 1):
+            # Due to mplot3d rotation and view limitations, swap y and z to make the stick figure
+            # appear oriented better
+            x_vals = [leg[i][0], leg[i+1][0]]
+            y_vals = [leg[i][1], leg[i+1][1]]
+            z_vals = [leg[i][2], leg[i+1][2]]
+            leg_lines.append(ax.plot(x_vals, y_vals, z_vals,color=plt_colors[i])[0])
 
+    return leg_lines
 
 def update_lines(num, coord_data, lines):
 
+    # print(coord_data[0][0])
+
+    line_to_leg__and_link_dict =   {4:(0,0),
+                                    5:(0,1),
+                                    6:(0,2),
+                                    7:(1,0),
+                                    8:(1,1),
+                                    9:(1,2),
+                                    10:(2,0),
+                                    11:(2,1),
+                                    12:(2,2),
+                                    13:(3,0),
+                                    14:(3,1),
+                                    15:(3,2)}
+
     for line, i in zip(lines, range(len(lines))):
-
-
+        # First four lines are the square body
         if i < 4:
-            # First four lines are the square body
             if i == 3:
                 ind = -1
             else:
@@ -351,25 +424,45 @@ def update_lines(num, coord_data, lines):
             #     pow(coord_data[num][ind][2],2)
             # )) 
             # 0.186518765811915 => 문제 없음!!
+
+            # print(coord_data[num][ind])
+            # break
              
-            x_vals = [coord_data[num][ind][0], coord_data[num][ind+1][0]]
-            y_vals = [coord_data[num][ind][1], coord_data[num][ind+1][1]]
-            z_vals = [coord_data[num][ind][2], coord_data[num][ind+1][2]]
+            x_vals = [coord_data[num][ind][0][0], coord_data[num][ind+1][0][0]]
+            y_vals = [coord_data[num][ind][0][1], coord_data[num][ind+1][0][1]]
+            z_vals = [coord_data[num][ind][0][2], coord_data[num][ind+1][0][2]]
 
             line.set_data_3d(x_vals, y_vals, z_vals)
+
+        # Next 12 lines are legs
+        else:
+            leg_num = line_to_leg__and_link_dict[i][0]
+            link_num = line_to_leg__and_link_dict[i][1]
+            leg_x_vals = [coord_data[num][leg_num][link_num][0], coord_data[num][leg_num][link_num+1][0]]
+            leg_y_vals = [coord_data[num][leg_num][link_num][1], coord_data[num][leg_num][link_num+1][1]]
+            leg_z_vals = [coord_data[num][leg_num][link_num][2], coord_data[num][leg_num][link_num+1][2]]
+            
+            line.set_data_3d(leg_x_vals, leg_y_vals, leg_z_vals)
 
     return lines
 
 if __name__ == "__main__":
     my_robot = QuadrupedRobot()
 
-    hip_positions = my_robot.getHipPosition()
-    print(hip_positions)
-
+    hip_positions = my_robot.getBodyPoints()
+    # print(hip_positions)
     FRPose = my_robot.getFRPose()
-    my_fr_Leg = ThreeJointLeg(name="FR", start_pose=FRPose)
-    fr_leg_points = my_fr_Leg.getLegPoints()
-    print(fr_leg_points)
+
+    # my_fr_Leg = ThreeJointLeg(name="FR", start_pose=FRPose)
+    leg_points = my_robot.getLegPoints()
+    
+    # print("=====================")
+    # print(leg_points)
+    # {'FRPoints': 
+    # [array([0.1805, 0.047 , 0.    ]), 
+    # array([0.1805, 0.1308, 0.    ]), 
+    # array([ 0.05194248,  0.1308    , -0.15320889]), 
+    # array([ 0.12034651,  0.1308    , -0.34114741])]}
 
     # Attaching 3D axis to the figure
     fig = plt.figure()
@@ -384,34 +477,33 @@ if __name__ == "__main__":
     ax.set_ylim3d([-0.2, 0.2])
     ax.set_zlim3d([-0.3, 0.2])
 
-    lines = getBodyLine(hip_positions, ax)
-    lines = getFRLegLine(fr_leg_points, ax)
+    body_lines = getBodyLine(hip_positions, ax)
+    leg_lines = getLegLines(leg_points, ax)
+    whole_lines = body_lines + leg_lines
     # coord_data = getPsiCoordData(25, -30, 30, )
 
-    # num_angles = 25
-    # pitch_angles = np.linspace(-30*d2r,30*d2r,num_angles)
-    # coord_data = []
-    # for theta in pitch_angles:
-    #     # Set a pitch angle
-    #     my_robot.setCOMOrientation(theta=theta)
+    num_angles = 25
+    pitch_angles = np.linspace(-30*d2r,30*d2r,num_angles)
+    coord_data = []
+    for theta in pitch_angles:
+        # Set a pitch angle
+        my_robot.setCOMOrientation(theta=theta)
 
-    #     # Get leg coordinates and append to data list
-    #     coord_data.append(my_robot.getHipPosition())
+        # Get leg coordinates and append to data list
+        # coord_data.append(my_robot.getBodyPoints())
+        coord_data.append(my_robot.getLegPoints())
 
-    #     my_robot.resetCOMOrientation()
+        my_robot.resetCOMOrientation()
 
+    coord_data = coord_data + coord_data[::-1]
 
-    # coord_data = coord_data + coord_data[::-1]
-
-    # line_ani = animation.FuncAnimation(
-    #     fig,
-    #     update_lines,
-    #     num_angles * 2,
-    #     fargs=(coord_data, lines),
-    #     interval=75,
-    #     blit=False,
-    # )
+    line_ani = animation.FuncAnimation(
+        fig,
+        update_lines,
+        num_angles * 2,
+        fargs=(coord_data, whole_lines),
+        interval=75,
+        blit=False,
+    )
 
     plt.show()
-
-    print(hip_positions)
