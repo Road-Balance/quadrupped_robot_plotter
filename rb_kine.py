@@ -49,8 +49,7 @@ def ht_inverse(ht):
     temp_vec_ht[0:3,3] = temp_vec
 
     # Return the matrix product
-    # return temp_rot_ht @ temp_vec_ht
-    return np.matmul(temp_rot_ht, temp_vec_ht)
+    return temp_rot_ht @ temp_vec_ht
 
 class ThreeJointLeg(object):
     def __init__(
@@ -58,7 +57,7 @@ class ThreeJointLeg(object):
         name,
         start_pose,
         link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-        joint_angles={"q1": 0, "q2": 40, "q3": -60},
+        joint_angles={"q1": 0, "q2": 30 * d2r, "q3": -60 * d2r},
     ):
         super().__init__()
 
@@ -82,11 +81,22 @@ class ThreeJointLeg(object):
         # inverse @ end_point => new ik point
         new_ik_point = leg_inv @ self.end_leg_point
         
-        print(new_ik_point)
         # [-0.06015349 -0.0838     -0.34114741  1.        ]
         
         # # ik with new ik point
         self.rad_q1, self.rad_q2, self.rad_q3 = self.calcIK(new_ik_point)
+        joint_angles={
+            "q1": self.rad_q1, 
+            "q2": self.rad_q2,
+            "q3": self.rad_q3
+        }
+
+        self.setLegJointRadians(joint_angles)
+        self.calcFK()
+
+    def setLegPoint(self, point):
+        # IK시 필요함
+        self.rad_q1, self.rad_q2, self.rad_q3 = self.calcIK(point)
         joint_angles={
             "q1": self.rad_q1, 
             "q2": self.rad_q2,
@@ -104,9 +114,9 @@ class ThreeJointLeg(object):
 
     def setLegJointAngles(self, angles):
 
-        self.rad_q1 = angles["q1"] * d2r
-        self.rad_q2 = angles["q2"] * d2r
-        self.rad_q3 = angles["q3"] * d2r
+        self.rad_q1 = angles["q1"]
+        self.rad_q2 = angles["q2"]
+        self.rad_q3 = angles["q3"]
 
     def setLegLength(self, lengths):
 
@@ -114,14 +124,9 @@ class ThreeJointLeg(object):
         self.l2 = lengths["l2"]
         self.l3 = lengths["l3"]
 
-    def getLegPosition(self):
+    def getLegPose(self):
         # IK시 필요함
         pass
-
-    def setLegPosition(self):
-        # IK시 필요함
-        pass
-
 
     def getT0_1(self):
 
@@ -189,7 +194,10 @@ class ThreeJointLeg(object):
         
     def calcIK(self, end_point):
 
-        x, y, z, _ = end_point
+        if len(end_point) == 3:
+            x, y, z = end_point
+        else: 
+            x, y, z, _ = end_point
         
         r1 = sqrt(y**2 + z**2 - self.l1**2)
         r2 = sqrt(r1**2 + x**2)
@@ -203,14 +211,13 @@ class ThreeJointLeg(object):
 
         rad_q1 = atan2(z, y) + atan2(r1, -1 * sign_offset * self.l1)
         
-        print(x, y, z, self.l1, self.l2, self.l3)
-
         if r3 > 1:
             r3 = 1
         elif r3 < -1:
             r3 = -1
 
-        rad_q3 = acos(r3)
+        rad_q3 = -1 * acos(r3)
+        # rad_q3 = -1 * atan2(sqrt(1 - r3 ** 2), r3)
         rad_q2 = atan2(-x, r1) - atan2(self.l3*sin(rad_q3), self.l2 + self.l3 *cos(rad_q3))
 
         return (
@@ -234,8 +241,8 @@ class ThreeJointLeg(object):
         ]
 
     def getLegAngles(self):
-        # IK시 필요함
-        pass 
+
+        return self.rad_q1, self.rad_q2, self.rad_q3
 
 class QuadrupedRobot(object):
     def __init__(
@@ -259,6 +266,7 @@ class QuadrupedRobot(object):
             body_length["width"],
             body_length["height"],
         )
+
         self.setCOMOrientation(
             orientation["phi"], orientation["theta"], orientation["psi"]
         )
@@ -267,28 +275,28 @@ class QuadrupedRobot(object):
                     name="FR", 
                     start_pose=self.FRPose,
                     link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                    joint_angles={"q1": 0, "q2": 30 * d2r, "q3": -60 * d2r}
                 )
 
         self.FL = ThreeJointLeg(
                     name="FL", 
                     start_pose=self.FLPose,
                     link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                    joint_angles={"q1": 0, "q2": 30 * d2r, "q3": -60 * d2r}
                 )
 
         self.RL = ThreeJointLeg(
                     name="RL", 
                     start_pose=self.RLPose,
                     link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                    joint_angles={"q1": 0, "q2": 30 * d2r, "q3": -60 * d2r}
                 )
 
         self.RR = ThreeJointLeg(
                     name="RR", 
                     start_pose=self.RRPose,
                     link_length={"l1": 0.0838, "l2": 0.2, "l3": 0.2},
-                    joint_angles={"q1": 0, "q2": 40, "q3": -60}
+                    joint_angles={"q1": 0, "q2": 30 * d2r, "q3": -60 * d2r}
                 )
 
         self.leg_points = {"FR" : [], "FL" : [], "RR" : [], "RL" : []}
@@ -312,6 +320,17 @@ class QuadrupedRobot(object):
         self.body_length = height
 
         # TODO: Update Hip Points
+
+    def setLegPoints(self, leg_points):
+
+        if self.is_first == True:
+            raise Exception('First Setting Error') 
+
+        self.FR.setLegPoint(leg_points["FR"])
+        self.FL.setLegPoint(leg_points["FL"])
+        self.RR.setLegPoint(leg_points["RR"])
+        self.RL.setLegPoint(leg_points["RL"])
+
 
     def setCOMOrientation(self, phi=0, theta=0, psi=0):
 
@@ -562,6 +581,18 @@ def update_lines(num, coord_data, lines):
 if __name__ == "__main__":
     my_robot = QuadrupedRobot()
 
+    height = 0.3
+    
+    # IK의 기준은 몸통 끝이다.
+    desired_p4_points = {
+        "FR": [ 0, -my_robot.hip_length, -height ],
+        "FL": [ 0,  my_robot.hip_length, -height ],
+        "RR": [ 0, -my_robot.hip_length, -height ],
+        "RL": [ 0, my_robot.hip_length, -height ],
+    }
+
+
+    my_robot.setLegPoints(desired_p4_points)
     hip_positions = my_robot.getBodyPoints()
     # print(hip_positions)
     FRPose = my_robot.getFRPose()
