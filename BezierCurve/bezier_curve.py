@@ -31,8 +31,6 @@ class BezierCurveMaker(object):
         elif type(points) == list: 
             self.points = np.array(points)
 
-        print(self.points)
-    
     def getBezierPoint(self, t):
         # Caution!! array elements must be float
         output = np.array([0.0, 0.0])
