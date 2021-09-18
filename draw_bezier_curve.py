@@ -4,15 +4,21 @@ import matplotlib.pyplot as plt
 from BezierCurve import BezierCurveMaker
 
 points = [
-        [-5,  0],
-        [-5, 2.5],
-        [-5, 5],
-        [5,  5],
-        [5,  2.5],
-        [5,  0],
+        [-170,  -470],
+        [-242, -470],
+        [-300, -360],
+        [-300, -360],
+        [-300, -360],
+        [0, -360],
+        [0, -360],
+        [0, -320],
+        [300, -320],
+        [300, -320],
+        [242, -470],
+        [170, -470],
     ]
 
-num_sample = 25
+num_sample = 500
 sample_points = np.linspace(0, 1, num_sample)
 
 # Attaching 3D axis to the figure
@@ -21,7 +27,7 @@ fig = plt.figure()
 ax = fig.subplots()
 
 
-bc_maker = BezierCurveMaker(5, points)
+bc_maker = BezierCurveMaker(11, points)
 
 bc_result = []
 for t in sample_points:
@@ -29,12 +35,12 @@ for t in sample_points:
     bc_result.append(my_point)
 
 for p in bc_result:
-    print(p)
+    # print(p)
     ax.plot(p[0], p[1],'r-*',lw=1)
 
 # # X and Y swap
 ax.set_xlabel("X")
 ax.set_ylabel("Y")
-ax.axis([-6, 6, -1, 6])
+ax.axis([-300, 300, -600, 100])
 
 plt.show()
