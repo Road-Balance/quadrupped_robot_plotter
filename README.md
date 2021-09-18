@@ -43,3 +43,7 @@ python plot_animation.py
 <p>
     <img src="./images/bezier_coordination.png" height="500" />
 </p>
+
+<p>
+    <img src="./images/bezier_coordination_2D.png" height="500" />
+</p>
