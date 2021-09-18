@@ -28,3 +28,14 @@ python3 -m venv .venv
 ```
 python plot_animation.py
 ```
+
+# Notepad
+
+<p>
+    <img src="./images/bc.png" height="500" />
+</p>
+
+
+<p>
+    <img src="./images/bc_2.png" height="500" />
+</p>
