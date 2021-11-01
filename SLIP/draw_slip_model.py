@@ -7,14 +7,6 @@ from math import pi, cos, sin
 d2r = pi/180
 r2d = 180/pi
 
-
-# for i in range(5):
-#     item = np.array([[i, i]])
-#     arr = np.append(arr, item, axis=0) 
-
-# arr = np.delete(arr, [0, 0], axis=0)
-# print(arr)
-
 def plotBody(ax, x, y, lenLeg, thLeg, phi):
     _x, _y = [x, x + lenLeg*sin(thLeg)], [y, y - lenLeg*cos(thLeg)]
     ax.plot(_x, _y, marker = 'o')
@@ -34,12 +26,13 @@ def plotEllipse(ax, x_ctr,y_ctr,rx,ry,phi):
     R = rotation(phi)
     point = np.array(
         [
-            x_ctr + rx * np.cos(t),
-            y_ctr + ry * np.sin(t)
+            rx * np.cos(t),
+            ry * np.sin(t)
         ]
     )
 
     rotated_point = R @ point
+    rotated_point += [[x_ctr], [y_ctr]]
     print(rotated_point.T)
 
     ax.plot( rotated_point[0], rotated_point[1] )
